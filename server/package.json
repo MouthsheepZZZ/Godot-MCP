@@ -1,6 +1,6 @@
 {
   "name": "godot-mcp-server",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Godot MCP Server using FastMCP",
   "type": "module",
   "main": "dist/index.js",
@@ -20,7 +20,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "fastmcp": "^1.20.4",
+    "fastmcp": "^1.20.5",
     "websocket": "^1.0.35",
     "ws": "^8.13.0",
     "zod": "^3.21.4"
@@ -28,7 +28,7 @@
   "devDependencies": {
     "@types/node": "^20.3.1",
     "@types/ws": "^8.5.5",
-    "nodemon": "^2.0.22",
+    "nodemon": "^3.1.9",
     "typescript": "^5.1.3"
   }
 }
