@@ -4,26 +4,37 @@ import { scriptTools } from './tools/script_tools.js';
 import { sceneTools } from './tools/scene_tools.js';
 import { editorTools } from './tools/editor_tools.js';
 import { getGodotConnection } from './utils/godot_connection.js';
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+// Console logs for debugging
+console.error('--------------------------------------------');
+console.error('Godot MCP Server Starting - DEBUG INFO');
+console.error('Node.js version:', process.version);
+console.error('Platform:', process.platform);
+console.error('Working directory:', process.cwd());
+console.error('--------------------------------------------');
 
 // Import resources
-import { 
-  sceneListResource, 
-  sceneStructureResource 
+import {
+  sceneListResource,
+  sceneStructureResource
 } from './resources/scene_resources.js';
-import { 
-  scriptResource, 
+import {
+  scriptResource,
   scriptListResource,
-  scriptMetadataResource 
+  scriptMetadataResource
 } from './resources/script_resources.js';
-import { 
+import {
   projectStructureResource,
   projectSettingsResource,
-  projectResourcesResource 
+  projectResourcesResource
 } from './resources/project_resources.js';
-import { 
+import {
   editorStateResource,
   selectedNodeResource,
-  currentScriptResource 
+  currentScriptResource
 } from './resources/editor_resources.js';
 
 /**
@@ -35,11 +46,12 @@ async function main() {
   // Create FastMCP instance
   const server = new FastMCP({
     name: 'GodotMCP',
-    version: '1.0.0',
+    version: '1.1.0',
   });
 
   // Register all tools
   [...nodeTools, ...scriptTools, ...sceneTools, ...editorTools].forEach(tool => {
+    console.error(`Registering tool: ${tool.name}`);
     server.addTool(tool);
   });
 
@@ -57,11 +69,19 @@ async function main() {
   server.addResource(scriptResource);
   server.addResource(scriptMetadataResource);
 
-  // Try to connect to Godot
+  // Try to connect to Godot and test the connection
   try {
     const godot = getGodotConnection();
     await godot.connect();
     console.error('Successfully connected to Godot WebSocket server');
+
+    // Send an immediate ping to keep the connection alive
+    try {
+      await godot.sendCommand('ping', {});
+      console.error('Sent initial ping command to Godot');
+    } catch (pingError) {
+      console.error('Failed to send ping command:', pingError);
+    }
   } catch (error) {
     const err = error as Error;
     console.warn(`Could not connect to Godot: ${err.message}`);
@@ -70,7 +90,7 @@ async function main() {
 
   // Start the server
   server.start({
-    transportType: 'stdio',
+    transportType: 'stdio'
   });
 
   console.error('Godot MCP server started');

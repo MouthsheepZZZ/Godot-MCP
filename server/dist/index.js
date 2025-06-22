@@ -47,18 +47,44 @@ import { FastMCP } from 'fastmcp';
 import { nodeTools } from './tools/node_tools.js';
 import { scriptTools } from './tools/script_tools.js';
 import { sceneTools } from './tools/scene_tools.js';
+import { editorTools } from './tools/editor_tools.js';
 import { getGodotConnection } from './utils/godot_connection.js';
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+// Correct way to get __dirname in ES Modules
+var __filename = fileURLToPath(import.meta.url);
+var __dirname = path.dirname(__filename);
+// Define log file path relative to the script's directory
+var logFilePath = path.join(__dirname, 'mcp_startup.log');
+try {
+    // Attempt to write a startup message immediately
+    fs.writeFileSync(logFilePath, "MCP Script Started: ".concat(new Date().toISOString(), "\n"), { flag: 'a' }); // 'a' for append
+}
+catch (logError) {
+    // If logging fails, try console as a last resort (though it might not be captured)
+    console.error('Failed to write initial log file:', logError);
+}
+// Console logs for debugging
+console.error('--------------------------------------------');
+console.error('Godot MCP Server Starting - DEBUG INFO');
+console.error('Node.js version:', process.version);
+console.error('Platform:', process.platform);
+console.error('Working directory:', process.cwd());
+console.error('--------------------------------------------');
 // Import resources
 import { sceneListResource, sceneStructureResource } from './resources/scene_resources.js';
 import { scriptResource, scriptListResource, scriptMetadataResource } from './resources/script_resources.js';
 import { projectStructureResource, projectSettingsResource, projectResourcesResource } from './resources/project_resources.js';
 import { editorStateResource, selectedNodeResource, currentScriptResource } from './resources/editor_resources.js';
+// Log initialization start
+fs.appendFileSync(logFilePath, "Imports completed, starting main function: ".concat(new Date().toISOString(), "\n"));
 /**
  * Main entry point for the Godot MCP server
  */
 function main() {
     return __awaiter(this, void 0, void 0, function () {
-        var server, godot, error_1, err, cleanup;
+        var server, godot, result, pingError_1, error_1, err, cleanup;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -68,7 +94,8 @@ function main() {
                         version: '1.0.0',
                     });
                     // Register all tools
-                    __spreadArray(__spreadArray(__spreadArray([], nodeTools, true), scriptTools, true), sceneTools, true).forEach(function (tool) {
+                    __spreadArray(__spreadArray(__spreadArray(__spreadArray([], nodeTools, true), scriptTools, true), sceneTools, true), editorTools, true).forEach(function (tool) {
+                        console.error("Registering tool: ".concat(tool.name));
                         server.addTool(tool);
                     });
                     // Register all resources
@@ -86,23 +113,41 @@ function main() {
                     server.addResource(scriptMetadataResource);
                     _a.label = 1;
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
+                    _a.trys.push([1, 8, , 9]);
                     godot = getGodotConnection();
                     return [4 /*yield*/, godot.connect()];
                 case 2:
                     _a.sent();
                     console.error('Successfully connected to Godot WebSocket server');
-                    return [3 /*break*/, 4];
+                    _a.label = 3;
                 case 3:
+                    _a.trys.push([3, 6, , 7]);
+                    return [4 /*yield*/, godot.sendCommand('ping', {})];
+                case 4:
+                    _a.sent();
+                    console.error('Sent initial ping command to Godot');
+                    // Try a list_nodes command to test the connection
+                    console.error('Testing list_nodes command...');
+                    return [4 /*yield*/, godot.sendCommand('list_nodes', { parent_path: '/root' })];
+                case 5:
+                    result = _a.sent();
+                    console.error('list_nodes result:', JSON.stringify(result));
+                    return [3 /*break*/, 7];
+                case 6:
+                    pingError_1 = _a.sent();
+                    console.error('Failed to send test commands:', pingError_1);
+                    return [3 /*break*/, 7];
+                case 7: return [3 /*break*/, 9];
+                case 8:
                     error_1 = _a.sent();
                     err = error_1;
                     console.warn("Could not connect to Godot: ".concat(err.message));
                     console.warn('Will retry connection when commands are executed');
-                    return [3 /*break*/, 4];
-                case 4:
+                    return [3 /*break*/, 9];
+                case 9:
                     // Start the server
                     server.start({
-                        transportType: 'stdio',
+                        transportType: 'stdio'
                     });
                     console.error('Godot MCP server started');
                     cleanup = function () {
