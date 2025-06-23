@@ -26,6 +26,13 @@ func _create_node(client_id: int, params: Dictionary, command_id: String) -> voi
 	var node_type = params.get("node_type", "Node")
 	var node_name = params.get("node_name", "NewNode")
 
+	var resolved_parent_path = parent_path
+	var scene_root = EditorInterface.get_edited_scene_root()
+	if scene_root:
+		var scene_root_path = scene_root.get_path()
+		if parent_path == "/root" or parent_path == scene_root_path:
+			resolved_parent_path = scene_root_path
+
 	# Validation
 	if not ClassDB.class_exists(node_type):
 		return _send_error(client_id, "Invalid node type: %s" % node_type, command_id)
@@ -42,7 +49,7 @@ func _create_node(client_id: int, params: Dictionary, command_id: String) -> voi
 		return _send_error(client_id, "No scene is currently being edited", command_id)
 
 	# Get the parent node using the editor node helper
-	var parent = _get_editor_node(parent_path)
+	var parent = _get_editor_node(resolved_parent_path)
 	if not parent:
 		return _send_error(client_id, "Parent node not found: %s" % parent_path, command_id)
 
@@ -68,8 +75,17 @@ func _create_node(client_id: int, params: Dictionary, command_id: String) -> voi
 	# Mark the scene as modified
 	_mark_scene_modified()
 
+	var new_node_path = parent.get_path().to_string() + "/" + node_name
+	if scene_root:
+		var scene_root_path = scene_root.get_path()
+		if new_node_path.begins_with(scene_root_path):
+			if new_node_path == scene_root_path:
+				new_node_path = "/root"
+			else:
+				new_node_path = "/root" + new_node_path.substr(scene_root_path.length())
+
 	_send_success(client_id, {
-		"node_path": parent_path + "/" + node_name
+		"node_path": new_node_path
 	}, command_id)
 
 func _delete_node(client_id: int, params: Dictionary, command_id: String) -> void:
@@ -78,6 +94,13 @@ func _delete_node(client_id: int, params: Dictionary, command_id: String) -> voi
 	# Validation
 	if node_path.is_empty():
 		return _send_error(client_id, "Node path cannot be empty", command_id)
+
+	var resolved_node_path = node_path
+	var scene_root = EditorInterface.get_edited_scene_root()
+	if scene_root:
+		var scene_root_path = scene_root.get_path()
+		if node_path == "/root" or node_path == scene_root_path:
+			resolved_node_path = scene_root_path
 
 	# Get editor plugin and interfaces
 	var plugin = Engine.get_meta("GodotMCPPlugin")
@@ -91,7 +114,7 @@ func _delete_node(client_id: int, params: Dictionary, command_id: String) -> voi
 		return _send_error(client_id, "No scene is currently being edited", command_id)
 
 	# Get the node using the editor node helper
-	var node = _get_editor_node(node_path)
+	var node = _get_editor_node(resolved_node_path)
 	if not node:
 		return _send_error(client_id, "Node not found: %s" % node_path, command_id)
 
@@ -111,8 +134,14 @@ func _delete_node(client_id: int, params: Dictionary, command_id: String) -> voi
 	# Mark the scene as modified
 	_mark_scene_modified()
 
+	var aliased_path = node_path
+	if scene_root:
+		var scene_root_path = scene_root.get_path()
+		if node_path == scene_root_path:
+			aliased_path = "/root"
+
 	_send_success(client_id, {
-		"deleted_node_path": node_path
+		"deleted_node_path": aliased_path
 	}, command_id)
 
 func _update_node_property(client_id: int, params: Dictionary, command_id: String) -> void:
@@ -130,13 +159,20 @@ func _update_node_property(client_id: int, params: Dictionary, command_id: Strin
 	if property_value == null:
 		return _send_error(client_id, "Property value cannot be null", command_id)
 
+	var resolved_node_path = node_path
+	var scene_root = EditorInterface.get_edited_scene_root()
+	if scene_root:
+		var scene_root_path = scene_root.get_path()
+		if node_path == "/root" or node_path == scene_root_path:
+			resolved_node_path = scene_root_path
+
 	# Get editor plugin and interfaces
 	var plugin = Engine.get_meta("GodotMCPPlugin")
 	if not plugin:
 		return _send_error(client_id, "GodotMCPPlugin not found in Engine metadata", command_id)
 
 	# Get the node using the editor node helper
-	var node = _get_editor_node(node_path)
+	var node = _get_editor_node(resolved_node_path)
 	if not node:
 		return _send_error(client_id, "Node not found: %s" % node_path, command_id)
 
@@ -166,8 +202,17 @@ func _update_node_property(client_id: int, params: Dictionary, command_id: Strin
 	# Mark the scene as modified
 	_mark_scene_modified()
 
+	var aliased_path = node_path
+	if scene_root:
+		var scene_root_path = scene_root.get_path()
+		if node_path.begins_with(scene_root_path):
+			if node_path == scene_root_path:
+				aliased_path = "/root"
+			else:
+				aliased_path = "/root" + node_path.substr(scene_root_path.length())
+
 	_send_success(client_id, {
-		"node_path": node_path,
+		"node_path": aliased_path,
 		"property": property_name,
 		"value": property_value,
 		"parsed_value": str(parsed_value)
@@ -180,8 +225,15 @@ func _get_node_properties(client_id: int, params: Dictionary, command_id: String
 	if node_path.is_empty():
 		return _send_error(client_id, "Node path cannot be empty", command_id)
 
+	var resolved_node_path = node_path
+	var scene_root = EditorInterface.get_edited_scene_root()
+	if scene_root:
+		var scene_root_path = scene_root.get_path()
+		if node_path == "/root" or node_path == scene_root_path:
+			resolved_node_path = scene_root_path
+
 	# Get the node using the editor node helper
-	var node = _get_editor_node(node_path)
+	var node = _get_editor_node(resolved_node_path)
 	if not node:
 		return _send_error(client_id, "Node not found: %s" % node_path, command_id)
 
@@ -194,29 +246,56 @@ func _get_node_properties(client_id: int, params: Dictionary, command_id: String
 		if not name.begins_with("_"):  # Skip internal properties
 			properties[name] = node.get(name)
 
+	var aliased_path = node_path
+	if scene_root:
+		var scene_root_path = scene_root.get_path()
+		if node_path.begins_with(scene_root_path):
+			if node_path == scene_root_path:
+				aliased_path = "/root"
+			else:
+				aliased_path = "/root" + node_path.substr(scene_root_path.length())
+
 	_send_success(client_id, {
-		"node_path": node_path,
+		"node_path": aliased_path,
 		"properties": properties
 	}, command_id)
 
 func _list_nodes(client_id: int, params: Dictionary, command_id: String) -> void:
 	var parent_path = params.get("parent_path", "/root")
 
+	var aliased_parent_path = parent_path
+	var resolved_parent_path = parent_path
+	var scene_root = EditorInterface.get_edited_scene_root()
+	if scene_root:
+		var scene_root_path = scene_root.get_path()
+		if parent_path == "/root" or parent_path == scene_root_path:
+			resolved_parent_path = scene_root_path
+			aliased_parent_path = "/root"
+
 	# Get the parent node using the editor node helper
-	var parent = _get_editor_node(parent_path)
+	var parent = _get_editor_node(resolved_parent_path)
 	if not parent:
 		return _send_error(client_id, "Parent node not found: %s" % parent_path, command_id)
 
 	# Get children
 	var children = []
 	for child in parent.get_children():
+		var child_path = child.get_path().to_string()
+		if scene_root:
+			var scene_root_path = scene_root.get_path()
+			if child_path.begins_with(scene_root_path):
+				if child_path == scene_root_path:
+					child_path = "/root"
+				else:
+					child_path = "/root" + child_path.substr(scene_root_path.length())
+		
 		children.append({
 			"name": child.name,
 			"type": child.get_class(),
-			"path": str(child.get_path()).replace(str(parent.get_path()), parent_path)
+			"path": child_path
 		})
 
 	_send_success(client_id, {
-		"parent_path": parent_path,
+		"parent_path": aliased_parent_path,
 		"children": children
 	}, command_id)

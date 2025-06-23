@@ -38,7 +38,7 @@ export const nodeTools: MCPTool[] = [
     description: 'Create a new node in the Godot scene tree',
     parameters: z.object({
       parent_path: z.string()
-        .describe('Path to the parent node where the new node will be created (e.g. "/root", "/root/MainScene")'),
+        .describe('Path to the parent node. **CRITICAL: ALWAYS use "/root" to refer to the current scene\'s root node, ignore its name property**. E.g. root node name is \"AnotherName\", still use "/root" or "/root/SomeChildNode".'),
       node_type: z.string()
         .describe('Type of node to create (e.g. "Node2D", "Sprite2D", "Label")'),
       node_name: z.string()
